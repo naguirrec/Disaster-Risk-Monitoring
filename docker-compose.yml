@@ -1,0 +1,85 @@
+# Perfil cpu: la web y el servicio portable (umbral VH o U-Net PyTorch).
+# Perfil nvidia: el camino del curso DALI → TAO U-Net ResNet-18 → TensorRT → Triton.
+# Ese perfil no arranca en esta máquina: pide GPU NVIDIA, login en nvcr.io y un
+# model.plan exportado en la misma GPU. No hay pesos TAO ni notebooks del laboratorio.
+
+services:
+  inference:
+    build: ./services/inference
+    ports:
+      - "43124:43124"
+    profiles: ["cpu"]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "43123:43123"
+    environment:
+      INFERENCE_URL: http://inference:43124
+    depends_on:
+      - inference
+    profiles: ["cpu"]
+
+  dali:
+    image: nvcr.io/nvidia/dali:1.41.0-cuda120
+    profiles: ["nvidia"]
+    volumes:
+      - ./deploy/dali:/opt/dali
+      - ./data/raw:/data/raw:ro
+    command: ["python", "/opt/dali/preprocess.py"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  tao:
+    image: nvcr.io/nvidia/tao/tao-toolkit:5.0.0-pyt
+    profiles: ["nvidia"]
+    volumes:
+      - ./deploy/tao:/specs:ro
+      - ./data/raw:/data/raw:ro
+      - tao-results:/results
+    environment:
+      KEY: ${TAO_KEY:-}
+    # La imagen y la sintaxis exacta dependen de la versión de TAO con cuenta NGC.
+    # Secuencia del curso, cuando la imagen responde a `tao unet`:
+    #   tao unet train -e /specs/unet_resnet18.yaml -r /results -k "$KEY"
+    #   tao unet evaluate -e /specs/unet_resnet18.yaml -m /results/weights.tlt -k "$KEY"
+    #   tao unet export -e /specs/unet_resnet18.yaml -m /results/weights.tlt -k "$KEY"
+    command: ["echo", "TAO no se ejecuta aquí: hace falta NGC, GPU y el spec de tu versión. Ver README."]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  triton:
+    image: nvcr.io/nvidia/tritonserver:24.08-py3
+    profiles: ["nvidia"]
+    command:
+      - tritonserver
+      - --model-repository=/models
+      - --strict-model-config=true
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+    volumes:
+      - ./deploy/triton/model_repository:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  tao-results:

@@ -1,0 +1,30 @@
+# Repositorio Triton del módulo 03 del curso.
+# Falta a propósito flood_segmentation_model/1/model.plan: es un motor TensorRT
+# atado a la GPU donde se exporta, y no se genera en este entorno.
+
+name: "flood_segmentation_model"
+backend: "tensorrt"
+max_batch_size: 1
+
+input [
+  {
+    name: "input"
+    data_type: TYPE_FP32
+    dims: [ 2, 512, 512 ]
+  }
+]
+
+output [
+  {
+    name: "output"
+    data_type: TYPE_FP32
+    dims: [ 1, 512, 512 ]
+  }
+]
+
+instance_group [
+  {
+    kind: KIND_GPU
+    count: 1
+  }
+]

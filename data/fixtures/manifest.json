@@ -1,0 +1,376 @@
+[
+  {
+    "chipId": "Bolivia_242570",
+    "role": "held_out",
+    "fixture": "data/fixtures/Bolivia_242570.npz",
+    "preview": "/previews/Bolivia_242570.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Bolivia_294583",
+    "role": "train",
+    "fixture": "data/fixtures/Bolivia_294583.npz",
+    "preview": "/previews/Bolivia_294583.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Ghana_141910",
+    "role": "train",
+    "fixture": "data/fixtures/Ghana_141910.npz",
+    "preview": "/previews/Ghana_141910.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Ghana_319168",
+    "role": "held_out",
+    "fixture": "data/fixtures/Ghana_319168.npz",
+    "preview": "/previews/Ghana_319168.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "India_1050276",
+    "role": "train",
+    "fixture": "data/fixtures/India_1050276.npz",
+    "preview": "/previews/India_1050276.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "India_1068117",
+    "role": "held_out",
+    "fixture": "data/fixtures/India_1068117.npz",
+    "preview": "/previews/India_1068117.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Mekong_16233",
+    "role": "held_out",
+    "fixture": "data/fixtures/Mekong_16233.npz",
+    "preview": "/previews/Mekong_16233.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Mekong_293769",
+    "role": "train",
+    "fixture": "data/fixtures/Mekong_293769.npz",
+    "preview": "/previews/Mekong_293769.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Nigeria_1095404",
+    "role": "train",
+    "fixture": "data/fixtures/Nigeria_1095404.npz",
+    "preview": "/previews/Nigeria_1095404.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Nigeria_598959",
+    "role": "held_out",
+    "fixture": "data/fixtures/Nigeria_598959.npz",
+    "preview": "/previews/Nigeria_598959.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Pakistan_1027214",
+    "role": "train",
+    "fixture": "data/fixtures/Pakistan_1027214.npz",
+    "preview": "/previews/Pakistan_1027214.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Pakistan_1036366",
+    "role": "held_out",
+    "fixture": "data/fixtures/Pakistan_1036366.npz",
+    "preview": "/previews/Pakistan_1036366.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Paraguay_1029191",
+    "role": "train",
+    "fixture": "data/fixtures/Paraguay_1029191.npz",
+    "preview": "/previews/Paraguay_1029191.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Paraguay_896458",
+    "role": "held_out",
+    "fixture": "data/fixtures/Paraguay_896458.npz",
+    "preview": "/previews/Paraguay_896458.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Somalia_12849",
+    "role": "held_out",
+    "fixture": "data/fixtures/Somalia_12849.npz",
+    "preview": "/previews/Somalia_12849.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Somalia_970508",
+    "role": "train",
+    "fixture": "data/fixtures/Somalia_970508.npz",
+    "preview": "/previews/Somalia_970508.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Spain_3285448",
+    "role": "held_out",
+    "fixture": "data/fixtures/Spain_3285448.npz",
+    "preview": "/previews/Spain_3285448.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Spain_8565131",
+    "role": "train",
+    "fixture": "data/fixtures/Spain_8565131.npz",
+    "preview": "/previews/Spain_8565131.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Sri-Lanka_847275",
+    "role": "held_out",
+    "fixture": "data/fixtures/Sri-Lanka_847275.npz",
+    "preview": "/previews/Sri-Lanka_847275.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "Sri-Lanka_92824",
+    "role": "train",
+    "fixture": "data/fixtures/Sri-Lanka_92824.npz",
+    "preview": "/previews/Sri-Lanka_92824.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "USA_366607",
+    "role": "held_out",
+    "fixture": "data/fixtures/USA_366607.npz",
+    "preview": "/previews/USA_366607.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  },
+  {
+    "chipId": "USA_86502",
+    "role": "train",
+    "fixture": "data/fixtures/USA_86502.npz",
+    "preview": "/previews/USA_86502.jpg",
+    "quantization": {
+      "vv": [
+        -30.0,
+        0.0
+      ],
+      "vh": [
+        -40.0,
+        -5.0
+      ],
+      "dtype": "uint8"
+    }
+  }
+]

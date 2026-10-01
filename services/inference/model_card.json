@@ -1,0 +1,31 @@
+{
+  "model_name": "flood_segmentation_model",
+  "model_version": "1",
+  "backend": "pytorch_unet",
+  "architecture": "U-Net pequeño (16-32-64-96), sin backbone ResNet-18",
+  "ran_dali": false,
+  "ran_tao": false,
+  "ran_tensorrt": false,
+  "ran_triton": false,
+  "train_chips": 22,
+  "held_out_chips": 11,
+  "epochs": 16,
+  "crop": 256,
+  "threshold_iou": 0.5524,
+  "unet_iou": 0.6097,
+  "normalization_db": {
+    "vv": [
+      -25.0,
+      0.0
+    ],
+    "vh": [
+      -35.0,
+      -5.0
+    ]
+  },
+  "input": "Sentinel-1 VV y VH en dB, forma [1, 2, 512, 512], float32",
+  "output": "Probabilidad de agua, forma [1, 1, 512, 512], float32",
+  "optional_input": "vh_threshold, float32 [1], umbral del evento en dB. Solo lo usa el backend de umbral.",
+  "decision": "El U-Net (IoU 0.610) supera al umbral VH (IoU 0.552) en los 11 chips apartados. El servicio portable carga esos pesos. No es un motor TensorRT ni un modelo TAO.",
+  "weights": "services/inference/weights/flood_unet.pt"
+}

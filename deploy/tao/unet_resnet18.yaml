@@ -1,0 +1,35 @@
+# Plantilla del camino TAO del curso. No es el spec del laboratorio DLI
+# (ese material no se redistribuye) y los nombres de campo cambian entre
+# versiones de TAO. Ajústalo a la documentación de `tao unet` de tu release.
+#
+# Curso: tarea unet, backbone ResNet-18, entrada Sentinel-1 de 2 bandas,
+# clases agua / no agua, exportación .etlt y después TensorRT.
+
+results_dir: /results/flood_unet
+
+dataset:
+  train_images: /data/images/train
+  train_masks: /data/masks/train
+  val_images: /data/images/val
+  val_masks: /data/masks/val
+  image_ext: .png
+  mask_ext: .png
+
+model:
+  backbone: resnet18
+  in_channels: 2
+  num_classes: 2
+  input_height: 512
+  input_width: 512
+
+train:
+  num_epochs: 50
+  batch_size: 8
+  learning_rate: 0.0001
+
+# Secuencia prevista, con la clave de cifrado de TAO y una GPU:
+#   tao unet train    -e /specs/unet_resnet18.yaml -r /results -k "$KEY"
+#   tao unet evaluate -e /specs/unet_resnet18.yaml -m /results/weights.tlt -k "$KEY"
+#   tao unet export   -e /specs/unet_resnet18.yaml -m /results/weights.tlt -k "$KEY"
+# El .etlt es portable. El .engine / .plan de TensorRT sale en la GPU de destino:
+#   trtexec --onnx=/results/model.onnx --saveEngine=/models/flood_segmentation_model/1/model.plan --fp16

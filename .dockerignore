@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+data/raw
+**/*.tif
+services/inference/__pycache__
+**/__pycache__
+*.pyc
