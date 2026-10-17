@@ -7,12 +7,19 @@
   "ran_tao": false,
   "ran_tensorrt": false,
   "ran_triton": false,
-  "train_chips": 22,
+  "downloaded_hand_labeled": 446,
+  "train_chips": 122,
   "held_out_chips": 11,
-  "epochs": 16,
+  "stratified_subset": true,
+  "epochs": 8,
   "crop": 256,
+  "learning_rate": 0.0003,
+  "warm_start": true,
+  "previous_unet_iou": 0.6097,
+  "retrained_unet_iou": 0.5913,
   "threshold_iou": 0.5524,
   "unet_iou": 0.6097,
+  "weights_kept": "el checkpoint de 22 chips",
   "normalization_db": {
     "vv": [
       -25.0,
@@ -26,6 +33,6 @@
   "input": "Sentinel-1 VV y VH en dB, forma [1, 2, 512, 512], float32",
   "output": "Probabilidad de agua, forma [1, 1, 512, 512], float32",
   "optional_input": "vh_threshold, float32 [1], umbral del evento en dB. Solo lo usa el backend de umbral.",
-  "decision": "El U-Net (IoU 0.610) supera al umbral VH (IoU 0.552) en los 11 chips apartados. El servicio portable carga esos pesos. No es un motor TensorRT ni un modelo TAO.",
+  "decision": "Se descargaron 446 chips etiquetados a mano y se reentrenó un subconjunto estratificado de 122 (los 11 eventos, mismos 11 chips apartados). IoU del fine-tune 0.591; IoU del modelo de 22 chips 0.610; IoU del umbral VH 0.552. El servicio carga el checkpoint de 22 chips. No es un motor TensorRT ni un modelo TAO.",
   "weights": "services/inference/weights/flood_unet.pt"
 }

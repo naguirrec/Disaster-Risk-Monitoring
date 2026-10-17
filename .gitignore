@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -42,7 +43,10 @@ next-env.d.ts
 
 # rasters locales (la muestra pequeña va en data/fixtures y public/previews)
 data/raw/
+data/copernicus/
 *.tif
+*.tiff
+*.zip
 __pycache__/
 .venv/
 *.pyc

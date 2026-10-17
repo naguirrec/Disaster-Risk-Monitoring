@@ -29,17 +29,22 @@ export function EventMap({
   useEffect(() => {
     const node = container.current;
     if (!node) return;
+    const styles = [
+      "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+      "https://tiles.openfreemap.org/styles/positron",
+    ];
     const map = new Map({
       container: node,
-      style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+      style: styles[0],
       center: [10, 12],
       zoom: 1.3,
     });
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
 
     let removed = false;
-    map.on("load", () => {
-      if (removed) return;
+    let styleIndex = 0;
+    const draw = () => {
+      if (removed || map.getSource("events")) return;
       map.addSource("events", { type: "geojson", data: events });
       map.addLayer({
         id: "events-fill",
@@ -92,27 +97,43 @@ export function EventMap({
       if (!bounds.isEmpty()) {
         map.fitBounds(bounds, { padding: 36, maxZoom: focusBounds ? 8 : 3.2, duration: 0 });
       }
-
-      map.on("click", (event: MapMouseEvent) => {
-        const layers = chips && chips.features.length > 0 ? ["chips-fill", "events-fill"] : ["events-fill"];
-        const found = map.queryRenderedFeatures(event.point, { layers });
-        const chip = found.find((feature) => feature.layer.id === "chips-fill");
-        const flood = found.find((feature) => feature.layer.id === "events-fill");
-        const chipId = chip?.properties?.chipId;
-        const slug = flood?.properties?.slug;
-        if (typeof chipId === "string") router.push(`/chips/${chipId}`);
-        else if (typeof slug === "string") router.push(`/eventos/${slug}`);
-      });
-
-      map.on("mousemove", (event: MapMouseEvent) => {
-        const layers = chips && chips.features.length > 0 ? ["chips-fill", "events-fill"] : ["events-fill"];
-        const found = map.queryRenderedFeatures(event.point, { layers });
-        map.getCanvas().style.cursor = found.length ? "pointer" : "";
-      });
+    };
+    const layersFor = () =>
+      chips && chips.features.length > 0 ? ["chips-fill", "events-fill"] : ["events-fill"];
+    map.on("click", (event: MapMouseEvent) => {
+      if (!map.getLayer("events-fill")) return;
+      const found = map.queryRenderedFeatures(event.point, { layers: layersFor() });
+      const chip = found.find((feature) => feature.layer.id === "chips-fill");
+      const flood = found.find((feature) => feature.layer.id === "events-fill");
+      const chipId = chip?.properties?.chipId;
+      const slug = flood?.properties?.slug;
+      if (typeof chipId === "string") router.push(`/chips/${chipId}`);
+      else if (typeof slug === "string") router.push(`/eventos/${slug}`);
     });
+    map.on("mousemove", (event: MapMouseEvent) => {
+      if (!map.getLayer("events-fill")) return;
+      const found = map.queryRenderedFeatures(event.point, { layers: layersFor() });
+      map.getCanvas().style.cursor = found.length ? "pointer" : "";
+    });
+    let styleReady = false;
+    map.on("style.load", () => {
+      styleReady = true;
+      draw();
+    });
+    map.on("error", (event) => {
+      if (removed || styleIndex > 0 || styleReady) return;
+      const message = String(event.error?.message ?? "");
+      if (/style|ajax|fetch|sprite|glyph/i.test(message)) {
+        styleIndex = 1;
+        map.setStyle(styles[1]);
+      }
+    });
+    const observer = new ResizeObserver(() => map.resize());
+    observer.observe(node);
 
     return () => {
       removed = true;
+      observer.disconnect();
       map.remove();
     };
   }, [chips, events, focusBounds, router]);

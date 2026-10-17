@@ -9,10 +9,37 @@ El caso es el del curso **Disaster Risk Monitoring Using Satellite Imagery** (NV
 | Paso del curso | En el laboratorio | En este repositorio |
 | --- | --- | --- |
 | Preproceso | NVIDIA DALI en GPU | Normalización en CPU. El perfil `nvidia` deja el pipeline DALI en `deploy/dali/preprocess.py` |
-| Entrenamiento | TAO Toolkit, `unet`, ResNet-18, salida `.etlt` | U-Net pequeño en PyTorch, solo CPU, sobre un puñado de chips públicos. Plantilla TAO en `deploy/tao/unet_resnet18.yaml` |
+| Entrenamiento | TAO Toolkit, `unet`, ResNet-18, salida `.etlt` | U-Net pequeño en PyTorch, solo CPU. Plantilla TAO en `deploy/tao/unet_resnet18.yaml` |
 | Despliegue | TensorRT → `model.plan` → Triton `flood_segmentation_model` | FastAPI con el mismo nombre de modelo y el contrato HTTP de Triton (imagen VV/VH en dB, máscara de probabilidad). No hay plan TensorRT |
 
-El backend que responde de verdad está en `services/inference/model_card.json`. En esta muestra el U-Net pequeño queda por delante del umbral VH (IoU macro 0,61 frente a 0,55 en 11 chips apartados), así que el servicio carga `services/inference/weights/flood_unet.pt`. Si en otro entrenamiento no supera el umbral, el mismo proceso pasa a devolver `VH < VH_thresh` del evento. No es un modelo TAO ni un motor Triton.
+El backend que responde de verdad está en `services/inference/model_card.json`. El servicio sigue cargando el U-Net de 22 chips (`services/inference/weights/flood_unet.pt`): en los mismos 11 chips apartados su IoU macro es 0,61, por delante del umbral VH (0,55). No es un modelo TAO ni un motor Triton.
+
+## Qué cambió
+
+El mapa ya no depende de abrir la página en `127.0.0.1`. Next, en desarrollo, bloquea los bundles de `/_next` si el host del navegador no está permitido, y sin esos bundles MapLibre no arranca. `allowedDevOrigins` incluye `127.0.0.1`, `localhost`, el nombre de esta máquina (`cursor`) y los hosts de preview de Cursor (`*.cursor.sh`, `*.cursor.com` y los equivalentes con `**`). El mapa base no lleva clave: CARTO Positron, y OpenFreeMap Positron si el estilo de CARTO no llega a cargar.
+
+Se descargó solo el conjunto etiquetado a mano de Sen1Floods11: 446 chips, `S1Hand` y `LabelHand`, desde `https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/`. No se bajó Sentinel-2, ni el conjunto débil, ni el bucket de unos 14 GB. Los GeoTIFF quedan en `data/raw/` y están en `.gitignore`.
+
+Entrenar los 446 en CPU alarga demasiado el pase, así que el reentrenamiento usa un subconjunto estratificado de 122 chips (`data/metadata/train_split.json`). Hay chips de los 11 eventos con etiqueta manual, y se apartan los mismos 11 que el modelo anterior. Partiendo de esos pesos, 8 épocas y recortes de 256, el mejor IoU macro del fine-tune fue **0,591**. No supera el **0,610** del checkpoint de 22 chips y sí supera el umbral VH (**0,552**), así que el servicio que escucha en el puerto 43124 sigue sirviendo el modelo de 22 chips con el mismo contrato HTTP de Triton (`flood_segmentation_model`).
+
+Copernicus Data Space queda listo y apagado hasta que existan credenciales. El proceso de inferencia lee `CDSE_USERNAME` y `CDSE_PASSWORD` del entorno y, si no están, de `.env` o `.env.local`. No se escriben en el repositorio. Con cuenta, la página `/copernicus` busca una escena Sentinel-1 GRD IW reciente sobre una huella del catálogo y, al descargarla, recorta un chip de 512×512 y lo pasa por el segmentador. Sin esas variables la página muestra ese vacío y el catálogo, el mapa y el visor siguen funcionando. En este entorno no había credenciales, así que no se descargó ninguna escena.
+
+El zip del curso y los notebooks del laboratorio siguen fuera del repositorio.
+
+## Cuenta de Copernicus en local
+
+```bash
+cp .env.example .env.local
+```
+
+Edita `.env.local` y deja los dos valores reales:
+
+```text
+CDSE_USERNAME=
+CDSE_PASSWORD=
+```
+
+Reinicia el servicio de inferencia para que los lea. El cliente público es `cdse-public`, el token sale de `identity.dataspace.copernicus.eu` y el catálogo es el OData de `catalogue.dataspace.copernicus.eu`.
 
 ## Datos
 
@@ -45,7 +72,7 @@ Escala de la fixture: VV de −30 a 0 dB y VH de −40 a −5 dB, lineales en `u
   gsutil -m rsync -r gs://sen1floods11/v1.1 /ruta/local
   ```
 
-La demo no necesita esa descarga. Los GeoTIFF crudos usados para entrenar están en `data/raw/` y no se versionan.
+La demo no necesita el bucket entero. Los 446 GeoTIFF manuales usados para el reentrenamiento están en `data/raw/` y no se versionan. Tampoco se versionan las escenas que baje Copernicus (`data/copernicus/`).
 
 Para ampliar la muestra, los chips siguen este patrón (ejemplo Bolivia):
 

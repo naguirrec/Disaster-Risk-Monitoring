@@ -13,8 +13,10 @@ import json
 from typing import Any
 
 import numpy as np
-from fastapi import FastAPI, Request, Response
+from fastapi import Body, FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 
+from cdse import CdseError, credentials_configured, search_scenes, segment_scene
 from segment import DEFAULT_VH_THRESHOLD, Segmenter
 
 MODEL = "flood_segmentation_model"
@@ -121,3 +123,48 @@ async def infer(request: Request) -> Response:
         media_type="application/octet-stream",
         headers={"Inference-Header-Content-Length": str(len(header_bytes))},
     )
+
+
+@app.get("/cdse/status")
+def cdse_status() -> dict[str, object]:
+    configured = credentials_configured()
+    return {
+        "configured": configured,
+        "inference": True,
+        "message": (
+            ""
+            if configured
+            else "Define CDSE_USERNAME y CDSE_PASSWORD en el entorno o en .env.local y reinicia este servicio."
+        ),
+    }
+
+
+@app.post("/cdse/search")
+def cdse_search(payload: dict = Body(...)) -> JSONResponse:
+    if not credentials_configured():
+        return JSONResponse(cdse_status(), status_code=409)
+    bounds = payload.get("bounds")
+    if not isinstance(bounds, list):
+        return JSONResponse({"error": "Falta la huella del evento."}, status_code=400)
+    try:
+        scenes = search_scenes([float(value) for value in bounds])
+    except (CdseError, TypeError, ValueError) as exc:
+        return JSONResponse({"configured": True, "error": str(exc)}, status_code=502)
+    return JSONResponse({"configured": True, "scenes": scenes})
+
+
+@app.post("/cdse/segment")
+def cdse_segment(payload: dict = Body(...)) -> JSONResponse:
+    if not credentials_configured():
+        return JSONResponse(cdse_status(), status_code=409)
+    try:
+        product_id = str(payload["product_id"])
+        lon = float(payload["lon"])
+        lat = float(payload["lat"])
+        vh_threshold = float(payload.get("vh_threshold", DEFAULT_VH_THRESHOLD))
+        result = segment_scene(product_id, lon, lat, vh_threshold, segmenter)
+    except KeyError:
+        return JSONResponse({"error": "Faltan product_id, lon o lat."}, status_code=400)
+    except CdseError as exc:
+        return JSONResponse({"configured": True, "error": str(exc)}, status_code=502)
+    return JSONResponse(result)

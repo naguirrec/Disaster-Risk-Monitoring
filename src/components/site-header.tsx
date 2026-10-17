@@ -3,13 +3,14 @@ import Link from "next/link";
 const links = [
   { href: "/", label: "Catálogo" },
   { href: "/chips", label: "Visor" },
+  { href: "/copernicus", label: "Copernicus" },
   { href: "/metodo", label: "Método" },
 ];
 
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 lg:px-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-6">
         <Link href="/" className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground">
             <svg viewBox="0 0 32 32" className="size-5" aria-hidden>
@@ -35,7 +36,7 @@ export function SiteHeader() {
             <span className="text-xs text-muted-foreground">Sen1Floods11 · Sentinel-1</span>
           </span>
         </Link>
-        <nav className="flex items-center gap-1 text-sm">
+        <nav className="flex flex-wrap items-center gap-1 text-sm">
           {links.map((link) => (
             <Link
               key={link.href}

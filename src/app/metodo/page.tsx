@@ -12,7 +12,7 @@ const steps = [
   {
     title: "Entrenamiento",
     course: "TAO Toolkit, tarea unet, backbone ResNet-18, salida portable .etlt.",
-    here: "Se entrena un U-Net pequeño en PyTorch, solo CPU, con un puñado de chips públicos. Si no mejora el umbral VH de la metadata, ese umbral es el que responde.",
+    here: "Se entrena un U-Net pequeño en PyTorch, solo CPU, sobre 122 chips estratificados de los 446 etiquetados a mano. Ese fine-tune (IoU 0,59) no mejora el de 22 chips (IoU 0,61), que sigue por delante del umbral VH (IoU 0,55) y es el que responde.",
   },
   {
     title: "Despliegue",
