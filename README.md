@@ -16,7 +16,7 @@ El backend que responde de verdad está en `services/inference/model_card.json`.
 
 ## Qué cambió
 
-El mapa ya no depende de abrir la página en `127.0.0.1`. Next, en desarrollo, bloquea los bundles de `/_next` si el host del navegador no está permitido, y sin esos bundles MapLibre no arranca. `allowedDevOrigins` incluye `127.0.0.1`, `localhost`, el nombre de esta máquina (`cursor`) y los hosts de preview de Cursor (`*.cursor.sh`, `*.cursor.com` y los equivalentes con `**`). El mapa base no lleva clave: CARTO Positron, y OpenFreeMap Positron si el estilo de CARTO no llega a cargar.
+El mapa ya no depende de abrir la página en `127.0.0.1`. Next, en desarrollo, bloquea los bundles de `/_next` si el host del navegador no está permitido, y sin esos bundles MapLibre no arranca. `allowedDevOrigins` incluye `127.0.0.1`, `localhost`, el nombre de esta máquina (`cursor`) y los hosts de preview de Cursor (`*.cursor.sh`, `*.cursor.com` y los equivalentes con `**`). El mapa base no lleva clave: CARTO Positron, y OpenFreeMap Positron si el estilo de CARTO no llega a cargar. El worker de MapLibre se sirve desde `public/` (`maplibre-gl-worker.mjs`); si no, el empaquetador de desarrollo apunta a una URL que no existe y el mapa queda en blanco.
 
 Se descargó solo el conjunto etiquetado a mano de Sen1Floods11: 446 chips, `S1Hand` y `LabelHand`, desde `https://storage.googleapis.com/sen1floods11/v1.1/data/flood_events/HandLabeled/`. No se bajó Sentinel-2, ni el conjunto débil, ni el bucket de unos 14 GB. Los GeoTIFF quedan en `data/raw/` y están en `.gitignore`.
 

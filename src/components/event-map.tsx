@@ -1,7 +1,11 @@
 "use client";
 
-import { LngLatBounds, Map, NavigationControl, type MapMouseEvent } from "maplibre-gl";
+import { LngLatBounds, Map, NavigationControl, setWorkerUrl, type MapMouseEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+
+// Turbopack rewrites the library URL, so the default relative worker 404s and
+// the basemap stays blank. These files are the upstream worker and its import.
+setWorkerUrl("/maplibre-gl-worker.mjs");
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
