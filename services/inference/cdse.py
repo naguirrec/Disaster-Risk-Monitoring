@@ -140,25 +140,64 @@ def _bounds_polygon(bounds: list[float]) -> str:
     return f"POLYGON(({coords}))"
 
 
-def search_scenes(bounds: list[float], days: int = 120) -> list[dict[str, str]]:
+_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _odata_day(value: str, end: bool) -> str:
+    if not isinstance(value, str) or not _DAY.match(value):
+        raise CdseError("La fecha tiene que ir como AAAA-MM-DD.")
+    clock = "23:59:59.000Z" if end else "00:00:00.000Z"
+    return f"{value}T{clock}"
+
+
+def _point(lon: float, lat: float) -> str:
+    lon = float(lon)
+    lat = float(lat)
+    if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+        raise CdseError("El punto queda fuera de lon/lat.")
+    return f"POINT({lon} {lat})"
+
+
+def search_scenes(
+    bounds: list[float] | None = None,
+    days: int = 120,
+    start: str | None = None,
+    end: str | None = None,
+    lon: float | None = None,
+    lat: float | None = None,
+    top: int = 8,
+) -> list[dict[str, str]]:
     if not credentials_configured():
         raise CdseError("Faltan CDSE_USERNAME y CDSE_PASSWORD.")
-    polygon = _bounds_polygon(bounds)
-    start = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT00:00:00.000Z")
+    if lon is not None and lat is not None:
+        area = _point(lon, lat)
+    elif bounds is not None:
+        area = _bounds_polygon(bounds)
+    else:
+        raise CdseError("Falta el punto o la huella.")
+    if start and end:
+        date_filter = (
+            f"ContentDate/Start gt {_odata_day(start, False)} and "
+            f"ContentDate/Start lt {_odata_day(end, True)}"
+        )
+    else:
+        opened = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT00:00:00.000Z")
+        date_filter = f"ContentDate/Start gt {opened}"
+    limit = min(max(int(top), 1), 12)
     filt = (
         "Collection/Name eq 'SENTINEL-1' and "
         "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
         "att/OData.CSC.StringAttribute/Value eq 'GRD') and "
         "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'operationalMode' and "
         "att/OData.CSC.StringAttribute/Value eq 'IW') and "
-        f"ContentDate/Start gt {start} and "
-        f"OData.CSC.Intersects(area=geography'SRID=4326;{polygon}')"
+        f"{date_filter} and "
+        f"OData.CSC.Intersects(area=geography'SRID=4326;{area}')"
     )
     query = urllib.parse.urlencode(
         {
             "$filter": filt,
             "$orderby": "ContentDate/Start desc",
-            "$top": "5",
+            "$top": str(limit),
             "$select": "Id,Name,ContentDate",
         },
         safe="$'()",
@@ -285,7 +324,90 @@ def _calibration_grid(xml_path: Path, row0: int, col0: int, height: int, width: 
     return grid
 
 
-def _read_window(path: Path, lon: float, lat: float) -> tuple[np.ndarray, np.ndarray]:
+def _convex_hull(points: np.ndarray) -> np.ndarray:
+    ordered = points[np.lexsort((points[:, 1], points[:, 0]))]
+    unique = [ordered[0]]
+    for point in ordered[1:]:
+        if not np.array_equal(point, unique[-1]):
+            unique.append(point)
+
+    def chain(seq: list[np.ndarray]) -> list[np.ndarray]:
+        hull: list[np.ndarray] = []
+        for point in seq:
+            while len(hull) >= 2:
+                a, b = hull[-2], hull[-1]
+                cross = (b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0])
+                if cross > 0:
+                    break
+                hull.pop()
+            hull.append(point)
+        return hull
+
+    lower = chain(unique)
+    upper = chain(unique[::-1])
+    return np.array(lower[:-1] + upper[:-1], dtype=np.float64)
+
+
+def _inside_polygon(polygon: np.ndarray, lon: float, lat: float) -> bool:
+    inside = False
+    j = len(polygon) - 1
+    for i in range(len(polygon)):
+        yi, yj = polygon[i, 1], polygon[j, 1]
+        xi, xj = polygon[i, 0], polygon[j, 0]
+        if (yi > lat) != (yj > lat):
+            x_cross = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < x_cross:
+                inside = not inside
+        j = i
+    return inside
+
+
+def _pixel_from_gcps(gcps, lon: float, lat: float, height: int, width: int) -> tuple[int, int]:
+    points = np.array([[point.x, point.y, point.col, point.row] for point in gcps], dtype=np.float64)
+    hull = _convex_hull(points[:, :2])
+    if not _inside_polygon(hull, lon, lat):
+        raise CdseError("El centro de la huella cae fuera de esta escena.")
+    distance = (points[:, 0] - lon) ** 2 + (points[:, 1] - lat) ** 2
+    nearest = np.argsort(distance)[:6]
+    design = np.column_stack([points[nearest, 0], points[nearest, 1], np.ones(nearest.size)])
+    col_coef, *_ = np.linalg.lstsq(design, points[nearest, 2], rcond=None)
+    row_coef, *_ = np.linalg.lstsq(design, points[nearest, 3], rcond=None)
+    sample = np.array([lon, lat, 1.0])
+    col = float(col_coef @ sample)
+    row = float(row_coef @ sample)
+    if not (0 <= row < height and 0 <= col < width):
+        raise CdseError("El centro de la huella cae fuera de esta escena.")
+    return int(round(row)), int(round(col))
+
+
+def _lonlat_from_pixel(gcps, col: float, row: float) -> tuple[float, float]:
+    points = np.array([[point.col, point.row, point.x, point.y] for point in gcps], dtype=np.float64)
+    distance = (points[:, 0] - col) ** 2 + (points[:, 1] - row) ** 2
+    nearest = np.argsort(distance)[:6]
+    design = np.column_stack([points[nearest, 0], points[nearest, 1], np.ones(nearest.size)])
+    lon_coef, *_ = np.linalg.lstsq(design, points[nearest, 2], rcond=None)
+    lat_coef, *_ = np.linalg.lstsq(design, points[nearest, 3], rcond=None)
+    sample = np.array([col, row, 1.0], dtype=np.float64)
+    return float(lon_coef @ sample), float(lat_coef @ sample)
+
+
+def _chip_corners(path: Path, col0: int, row0: int, size: int) -> list[list[float]]:
+    import rasterio
+
+    with rasterio.open(path) as src:
+        gcps, _crs = src.gcps
+        if not gcps:
+            raise CdseError("La medición no trae puntos de control para colocarla en el mapa.")
+        corners = (
+            (col0, row0),
+            (col0 + size, row0),
+            (col0 + size, row0 + size),
+            (col0, row0 + size),
+        )
+        return [[lon, lat] for lon, lat in (_lonlat_from_pixel(gcps, col, row) for col, row in corners)]
+
+
+def _read_window(path: Path, lon: float, lat: float, size: int = CHIP) -> tuple[np.ndarray, np.ndarray]:
     try:
         import rasterio
         from rasterio.transform import rowcol
@@ -293,14 +415,19 @@ def _read_window(path: Path, lon: float, lat: float) -> tuple[np.ndarray, np.nda
     except ImportError as exc:
         raise CdseError("Falta rasterio para recortar el GeoTIFF de la escena.") from exc
     with rasterio.open(path) as src:
-        row, col = rowcol(src.transform, lon, lat)
-        row = int(row)
-        col = int(col)
-        if src.height < CHIP or src.width < CHIP:
-            raise CdseError("La medición es más pequeña que un chip de 512×512.")
-        row0 = int(np.clip(row - CHIP // 2, 0, src.height - CHIP))
-        col0 = int(np.clip(col - CHIP // 2, 0, src.width - CHIP))
-        data = src.read(1, window=Window(col0, row0, CHIP, CHIP)).astype(np.float32)
+        if src.height < size or src.width < size:
+            raise CdseError("La medición es más pequeña que el recorte pedido.")
+        gcps, _crs = src.gcps
+        if gcps:
+            row, col = _pixel_from_gcps(gcps, lon, lat, src.height, src.width)
+        else:
+            row, col = rowcol(src.transform, lon, lat)
+            row, col = int(row), int(col)
+            if not (0 <= row < src.height and 0 <= col < src.width):
+                raise CdseError("El centro de la huella cae fuera de esta escena.")
+        row0 = int(np.clip(row - size // 2, 0, src.height - size))
+        col0 = int(np.clip(col - size // 2, 0, src.width - size))
+        data = src.read(1, window=Window(col0, row0, size, size)).astype(np.float32)
     return data, np.array([row0, col0], dtype=np.int32)
 
 
@@ -310,43 +437,111 @@ def _to_db(dn: np.ndarray, sigma: np.ndarray) -> np.ndarray:
     return np.nan_to_num(db, nan=-40.0, posinf=0.0, neginf=-40.0).astype(np.float32)
 
 
-def _preview(vh_db: np.ndarray, water: np.ndarray) -> str:
+def _stretch(values: np.ndarray, lo: float, hi: float) -> np.ndarray:
+    return np.clip((values - lo) / max(hi - lo, 1e-3), 0, 1)
+
+
+def _false_color(vv_db: np.ndarray, vh_db: np.ndarray) -> np.ndarray:
+    # Fixed decibel windows, so two dates stay comparable. Red is VV, green is VH,
+    # blue is the VV/VH ratio in dB. Smooth water stays dark.
+    red = _stretch(vv_db, -20.0, 0.0)
+    green = _stretch(vh_db, -28.0, -8.0)
+    blue = _stretch(vv_db - vh_db, 2.0, 16.0)
+    return np.stack([red, green, blue], axis=-1)
+
+
+def _png_data(image: np.ndarray, mode: str) -> str:
     from PIL import Image
 
-    finite = vh_db[np.isfinite(vh_db)]
-    lo, hi = np.percentile(finite, [5, 95]) if finite.size else (-30, -5)
-    gray = np.clip((vh_db - lo) / max(hi - lo, 1e-3), 0, 1)
-    rgb = np.stack([gray, gray, gray], axis=-1)
-    rgb[water] = rgb[water] * 0.35 + np.array([0.11, 0.55, 0.62])
-    image = Image.fromarray((rgb * 255).astype(np.uint8), mode="RGB")
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
+    Image.fromarray(image, mode=mode).save(buffer, format="PNG", optimize=True)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return f"data:image/png;base64,{encoded}"
 
 
-def segment_scene(product_id: str, lon: float, lat: float, vh_threshold: float, segmenter) -> dict:
+def _preview(vh_db: np.ndarray, water: np.ndarray, vv_db: np.ndarray | None = None) -> str:
+    if vv_db is None:
+        finite = vh_db[np.isfinite(vh_db)]
+        lo, hi = np.percentile(finite, [5, 95]) if finite.size else (-30, -5)
+        gray = np.clip((vh_db - lo) / max(hi - lo, 1e-3), 0, 1)
+        rgb = np.stack([gray, gray, gray], axis=-1)
+    else:
+        rgb = _false_color(vv_db, vh_db)
+    rgb = rgb.copy()
+    rgb[water] = rgb[water] * 0.35 + np.array([0.11, 0.55, 0.62])
+    return _png_data((rgb * 255).astype(np.uint8), "RGB")
+
+
+def _sar_png(vv_db: np.ndarray, vh_db: np.ndarray) -> str:
+    return _png_data((_false_color(vv_db, vh_db) * 255).astype(np.uint8), "RGB")
+
+
+def _mask_png(water: np.ndarray) -> str:
+    rgba = np.zeros((*water.shape, 4), dtype=np.uint8)
+    rgba[water] = (28, 148, 168, 188)
+    return _png_data(rgba, "RGBA")
+
+
+def segment_scene(
+    product_id: str,
+    lon: float,
+    lat: float,
+    vh_threshold: float,
+    segmenter,
+    tiles: int = 1,
+) -> dict:
+    tiles = 2 if int(tiles) == 2 else 1
+    span = CHIP * tiles
     folder = _download(product_id)
     vv_path = next(folder.glob("*-vv-*.tif*"))
     vh_path = next(folder.glob("*-vh-*.tif*"))
     # Calibration XML names look like calibration-s1a-iw-grd-vv-....xml
     vv_cal = next(path for path in folder.glob("calibration-*-vv-*.xml"))
     vh_cal = next(path for path in folder.glob("calibration-*-vh-*.xml"))
-    vv_dn, origin = _read_window(vv_path, lon, lat)
-    vh_dn, _origin = _read_window(vh_path, lon, lat)
+    try:
+        vv_dn, origin = _read_window(vv_path, lon, lat, span)
+        vh_dn, _origin = _read_window(vh_path, lon, lat, span)
+    except CdseError:
+        if tiles == 1:
+            raise
+        tiles = 1
+        span = CHIP
+        vv_dn, origin = _read_window(vv_path, lon, lat, span)
+        vh_dn, _origin = _read_window(vh_path, lon, lat, span)
     row0, col0 = int(origin[0]), int(origin[1])
-    vv_db = _to_db(vv_dn, _calibration_grid(vv_cal, row0, col0, CHIP, CHIP))
-    vh_db = _to_db(vh_dn, _calibration_grid(vh_cal, row0, col0, CHIP, CHIP))
+    vv_db = _to_db(vv_dn, _calibration_grid(vv_cal, row0, col0, span, span))
+    vh_db = _to_db(vh_dn, _calibration_grid(vh_cal, row0, col0, span, span))
     valid = (vv_dn > 0) & (vh_dn > 0)
-    image = np.stack([vv_db, vh_db])[None, ...]
-    probability = segmenter.predict(image, float(vh_threshold))[0, 0]
+    probability = np.zeros((span, span), dtype=np.float32)
+    for tile_row in range(tiles):
+        for tile_col in range(tiles):
+            row = tile_row * CHIP
+            col = tile_col * CHIP
+            image = np.stack(
+                [
+                    vv_db[row : row + CHIP, col : col + CHIP],
+                    vh_db[row : row + CHIP, col : col + CHIP],
+                ]
+            )[None, ...]
+            probability[row : row + CHIP, col : col + CHIP] = segmenter.predict(
+                image, float(vh_threshold)
+            )[0, 0]
     water = (probability >= 0.5) & valid
+    threshold_water = (vh_db < float(vh_threshold)) & valid
     area = float(water.sum() * PIXEL_KM2)
+    threshold_area = float(threshold_water.sum() * PIXEL_KM2)
     return {
         "product_id": product_id,
         "area_km2": round(area, 3),
+        "threshold_area_km2": round(threshold_area, 3),
         "valid_pixels": int(valid.sum()),
         "water_pixels": int(water.sum()),
+        "tiles": tiles,
+        "span_px": span,
+        "span_km": round(span * 10 / 1000, 2),
+        "corners": _chip_corners(vh_path, col0, row0, span),
         "backend": segmenter.backend,
-        "preview_png": _preview(vh_db, water),
+        "preview_png": _preview(vh_db, water, vv_db),
+        "sar_png": _sar_png(vv_db, vh_db),
+        "mask_png": _mask_png(water),
     }

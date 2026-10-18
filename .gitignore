@@ -49,4 +49,5 @@ data/copernicus/
 *.zip
 __pycache__/
 .venv/
+.conda/
 *.pyc

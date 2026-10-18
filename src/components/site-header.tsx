@@ -3,7 +3,7 @@ import Link from "next/link";
 const links = [
   { href: "/", label: "Catálogo" },
   { href: "/chips", label: "Visor" },
-  { href: "/copernicus", label: "Copernicus" },
+  { href: "/vigia", label: "Vigía" },
   { href: "/metodo", label: "Método" },
 ];
 
@@ -33,7 +33,7 @@ export function SiteHeader() {
             <span className="block font-heading text-lg leading-none tracking-tight">
               Monitor de inundaciones
             </span>
-            <span className="text-xs text-muted-foreground">Sen1Floods11 · Sentinel-1</span>
+            <span className="text-xs text-muted-foreground">Sentinel-1 · del catálogo al vigía</span>
           </span>
         </Link>
         <nav className="flex flex-wrap items-center gap-1 text-sm">

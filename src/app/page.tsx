@@ -82,9 +82,14 @@ export default function HomePage() {
           Colombia queda en el archivo y no tiene chips en esa colección. En el mapa, el ámbar marca
           la muestra que sí se puede segmentar.
         </p>
-        <Link href="/chips/Spain_3285448" className={cn(buttonVariants())}>
-          Abrir un chip de España
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/vigia" className={cn(buttonVariants())}>
+            Abrir el vigía
+          </Link>
+          <Link href="/chips/Spain_3285448" className={cn(buttonVariants({ variant: "secondary" }))}>
+            Abrir un chip de España
+          </Link>
+        </div>
       </section>
     </main>
   );

@@ -16,6 +16,7 @@ export async function POST(request: Request) {
         lon: payload.lon,
         lat: payload.lat,
         vh_threshold: payload.vh_threshold,
+        tiles: payload.tiles,
       }),
       cache: "no-store",
     });

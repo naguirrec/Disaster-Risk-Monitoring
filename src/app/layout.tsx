@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: "%s · Monitor de inundaciones",
   },
   description:
-    "Catálogo de los eventos Sen1Floods11, mapa de chips Sentinel-1 y estimación de área inundada.",
+    "Catálogo Sen1Floods11 y vigía de escenas Sentinel-1: calibración sigma0, puntos de control y máscara de agua sobre el mapa.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

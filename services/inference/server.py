@@ -144,10 +144,18 @@ def cdse_search(payload: dict = Body(...)) -> JSONResponse:
     if not credentials_configured():
         return JSONResponse(cdse_status(), status_code=409)
     bounds = payload.get("bounds")
-    if not isinstance(bounds, list):
-        return JSONResponse({"error": "Falta la huella del evento."}, status_code=400)
+    lon = payload.get("lon")
+    lat = payload.get("lat")
+    if not isinstance(bounds, list) and (lon is None or lat is None):
+        return JSONResponse({"error": "Falta la huella o el punto."}, status_code=400)
     try:
-        scenes = search_scenes([float(value) for value in bounds])
+        scenes = search_scenes(
+            [float(value) for value in bounds] if isinstance(bounds, list) else None,
+            start=payload.get("start") or None,
+            end=payload.get("end") or None,
+            lon=None if lon is None else float(lon),
+            lat=None if lat is None else float(lat),
+        )
     except (CdseError, TypeError, ValueError) as exc:
         return JSONResponse({"configured": True, "error": str(exc)}, status_code=502)
     return JSONResponse({"configured": True, "scenes": scenes})
@@ -162,7 +170,8 @@ def cdse_segment(payload: dict = Body(...)) -> JSONResponse:
         lon = float(payload["lon"])
         lat = float(payload["lat"])
         vh_threshold = float(payload.get("vh_threshold", DEFAULT_VH_THRESHOLD))
-        result = segment_scene(product_id, lon, lat, vh_threshold, segmenter)
+        tiles = int(payload.get("tiles", 1))
+        result = segment_scene(product_id, lon, lat, vh_threshold, segmenter, tiles)
     except KeyError:
         return JSONResponse({"error": "Faltan product_id, lon o lat."}, status_code=400)
     except CdseError as exc:
