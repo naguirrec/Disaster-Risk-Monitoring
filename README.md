@@ -45,9 +45,9 @@ Las contraseñas no se escriben en el repositorio. El proceso las lee del entorn
 5. Cada canal se calibra a dB con su tabla `sigmaNought`.
 6. El U-Net clasifica cada chip. La máscara es la probabilidad ≥ 0,5.
 7. Las cuatro esquinas del mosaico se vuelven a pasar a longitud y latitud con los mismos GCP. El radar no mira al norte, así que el recuadro sale girado sobre el mapa.
-8. Se pintan dos capas: un falso color (rojo VV, verde VH, azul el cociente VV/VH, con ventanas fijas en dB para que dos fechas se puedan comparar) y la máscara de agua, en cian y con el resto transparente. Las dos tienen opacidad propia.
+8. Se pintan dos capas: un falso color (rojo VV, verde VH, azul el cociente VV/VH, con ventanas fijas en dB para que dos fechas se puedan comparar) y la máscara de agua, en cian y con el resto transparente.
 
-El falso color no es una foto. El verde domina porque VH ocupa el canal verde. Por eso el vigía deja bajar la opacidad del radar hasta cero y dejar solo la máscara, o al revés.
+El falso color no es una foto. El verde domina porque VH ocupa el canal verde. En la esquina del mapa hay dos controles. **Radar** baja la opacidad del falso color hasta dejar ver las calles. **Máscara** baja solo el velo de agua. Son capas propias del vigía: no tocan el mar que ya dibuja el mapa base.
 
 ## Qué hace cada página
 
@@ -56,7 +56,7 @@ El falso color no es una foto. El verde domina porque VH ocupa el canal verde. P
 | `/` | Los 12 eventos del catálogo y el mapa de huellas. El ámbar marca los chips que sí están en la muestra local. |
 | `/eventos/[slug]` | Un evento: fecha de Sentinel-1, órbita, umbral VH y sus chips. |
 | `/chips` y `/chips/[chipId]` | El visor. Sobre el VH estirado superpone la máscara, estima el área y, si hay etiqueta, el IoU contra esa etiqueta. La opacidad de la máscara se puede bajar. |
-| `/vigia` | El caso operativo. Busca la pasada, mide y coloca el radar girado sobre el pueblo. |
+| `/vigia` | El caso operativo. Busca la pasada, mide, coloca el radar girado sobre el pueblo y deja regular por separado la opacidad del radar y la de la máscara. |
 | `/copernicus` | La búsqueda anterior, sobre una huella del catálogo de 2016–2019, con un solo chip. |
 | `/metodo` | En qué se parece esto al laboratorio del curso y en qué no. |
 
