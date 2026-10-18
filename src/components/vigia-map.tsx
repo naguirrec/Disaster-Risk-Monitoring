@@ -118,8 +118,8 @@ export function VigiaMap({
           Corner,
           Corner,
         ];
-        placeImage(map, "sar", current.sarPng, coordinates, radarOpacityRef.current);
-        placeImage(map, "water", current.maskPng, coordinates, maskOpacityRef.current);
+        placeImage(map, "vigia-radar", current.sarPng, coordinates, radarOpacityRef.current);
+        placeImage(map, "vigia-mask", current.maskPng, coordinates, maskOpacityRef.current);
         if (map.getLayer("watch-point")) map.moveLayer("watch-point");
         const bounds = new LngLatBounds();
         for (const corner of current.corners) bounds.extend([corner[0], corner[1]]);
@@ -158,8 +158,8 @@ export function VigiaMap({
       Corner,
       Corner,
     ];
-    placeImage(map, "sar", overlay.sarPng, coordinates, radarOpacityRef.current);
-    placeImage(map, "water", overlay.maskPng, coordinates, maskOpacityRef.current);
+    placeImage(map, "vigia-radar", overlay.sarPng, coordinates, radarOpacityRef.current);
+    placeImage(map, "vigia-mask", overlay.maskPng, coordinates, maskOpacityRef.current);
     if (map.getLayer("watch-point")) map.moveLayer("watch-point");
     const bounds = new LngLatBounds();
     for (const corner of overlay.corners) bounds.extend([corner[0], corner[1]]);
@@ -168,14 +168,16 @@ export function VigiaMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map?.getLayer("sar")) return;
-    map.setPaintProperty("sar", "raster-opacity", radarOpacity);
+    const radar = map?.getLayer("vigia-radar");
+    if (!map || radar?.type !== "raster") return;
+    map.setPaintProperty("vigia-radar", "raster-opacity", radarOpacity);
   }, [radarOpacity]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map?.getLayer("water")) return;
-    map.setPaintProperty("water", "raster-opacity", maskOpacity);
+    const mask = map?.getLayer("vigia-mask");
+    if (!map || mask?.type !== "raster") return;
+    map.setPaintProperty("vigia-mask", "raster-opacity", maskOpacity);
   }, [maskOpacity]);
 
   return <div ref={container} className="h-full w-full" />;
