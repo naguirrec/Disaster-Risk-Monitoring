@@ -12,7 +12,7 @@ const steps = [
   {
     title: "Entrenamiento",
     course: "TAO Toolkit, tarea unet, backbone ResNet-18, salida portable .etlt.",
-    here: "Se entrena un U-Net pequeño en PyTorch, solo CPU, sobre 122 chips estratificados de los 446 etiquetados a mano. Ese fine-tune (IoU 0,59) no mejora el de 22 chips (IoU 0,61), que sigue por delante del umbral VH (IoU 0,55) y es el que responde.",
+    here: "Se entrena un U-Net pequeño en PyTorch. El script usa la GPU NVIDIA cuando PyTorch la ve. El pase de 354 chips a 512, con España y Ghana apartadas, mejora esas crecidas (0,49 y 0,58) pero en los 11 chips de referencia baja a 0,57, por debajo del de 22 chips (0,61). Ese sigue respondiendo.",
   },
   {
     title: "Despliegue",

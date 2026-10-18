@@ -8,16 +8,45 @@
   "ran_tensorrt": false,
   "ran_triton": false,
   "downloaded_hand_labeled": 446,
-  "train_chips": 122,
+  "train_chips": 354,
   "held_out_chips": 11,
-  "stratified_subset": true,
-  "epochs": 8,
-  "crop": 256,
-  "learning_rate": 0.0003,
+  "held_out_events": [
+    "Spain",
+    "Ghana"
+  ],
+  "event_held_out_chips": 83,
+  "stratified_subset": false,
+  "epochs": 40,
+  "epochs_max": 40,
+  "patience": 8,
+  "crop": 512,
+  "batch_size": 4,
+  "loss": "binary cross-entropy + dice",
+  "augmentations": "rotaciones de 90 grados y volteos",
+  "learning_rate": 0.0001,
   "warm_start": true,
+  "train_device": "NVIDIA GeForce GTX 1650 Ti with Max-Q Design",
   "previous_unet_iou": 0.6097,
-  "retrained_unet_iou": 0.5913,
+  "previous_reported_iou": 0.6097,
+  "retrained_unet_iou": 0.5686,
   "threshold_iou": 0.5524,
+  "event_previous_iou": 0.3614,
+  "event_retrained_iou": 0.5341,
+  "event_threshold_iou": 0.2901,
+  "per_event_iou": {
+    "Spain": {
+      "n": 30,
+      "checkpoint": 0.3512,
+      "fine_tune": 0.4868,
+      "threshold": 0.3468
+    },
+    "Ghana": {
+      "n": 53,
+      "checkpoint": 0.3715,
+      "fine_tune": 0.5814,
+      "threshold": 0.2334
+    }
+  },
   "unet_iou": 0.6097,
   "weights_kept": "el checkpoint de 22 chips",
   "normalization_db": {
@@ -33,6 +62,6 @@
   "input": "Sentinel-1 VV y VH en dB, forma [1, 2, 512, 512], float32",
   "output": "Probabilidad de agua, forma [1, 1, 512, 512], float32",
   "optional_input": "vh_threshold, float32 [1], umbral del evento en dB. Solo lo usa el backend de umbral.",
-  "decision": "Se descargaron 446 chips etiquetados a mano y se reentrenó un subconjunto estratificado de 122 (los 11 eventos, mismos 11 chips apartados). IoU del fine-tune 0.591; IoU del modelo de 22 chips 0.610; IoU del umbral VH 0.552. El servicio carga el checkpoint de 22 chips. No es un motor TensorRT ni un modelo TAO.",
-  "weights": "services/inference/weights/flood_unet.pt"
+  "weights": "services/inference/weights/flood_unet.pt",
+  "decision": "Entrenamiento en GPU con 354 chips a 512 y pérdida BCE+Dice. No sustituye al checkpoint de 22 chips: en los 11 chips queda en 0.569, por debajo del checkpoint (0.610). IoU del fine-tune en los 11 chips 0.569; en España y Ghana 0.534. El servicio sigue cargando el checkpoint de 22 chips."
 }

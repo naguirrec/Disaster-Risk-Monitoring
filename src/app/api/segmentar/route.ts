@@ -8,8 +8,10 @@ export const runtime = "nodejs";
 
 const MODEL = "flood_segmentation_model";
 
-function backendLabel(backend: string) {
-  if (backend === "pytorch_unet") return "U-Net PyTorch (CPU)";
+function backendLabel(backend: string, device?: string) {
+  if (backend === "pytorch_unet") {
+    return device === "cuda" ? "U-Net PyTorch (GPU)" : "U-Net PyTorch (CPU)";
+  }
   return "Umbral VH de la metadata";
 }
 
@@ -120,7 +122,7 @@ export async function POST(request: Request) {
   const meta = JSON.parse(responseBytes.subarray(0, responseHeaderLen).toString()) as {
     model_name: string;
     model_version: string;
-    parameters?: { backend?: string; vh_threshold?: number };
+    parameters?: { backend?: string; device?: string; vh_threshold?: number };
   };
   const rawMask = responseBytes.subarray(responseHeaderLen);
   const aligned = new Uint8Array(rawMask.byteLength);
@@ -162,7 +164,8 @@ export async function POST(request: Request) {
     modelName: meta.model_name,
     modelVersion: meta.model_version,
     backend,
-    backendLabel: backendLabel(backend),
+    device: meta.parameters?.device ?? "cpu",
+    backendLabel: backendLabel(backend, meta.parameters?.device),
     vhThreshold: Number((meta.parameters?.vh_threshold ?? vhThreshold).toFixed(2)),
     waterPixels,
     validPixels,

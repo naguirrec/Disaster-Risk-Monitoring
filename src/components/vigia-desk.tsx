@@ -22,6 +22,7 @@ type SegmentResult = {
   area_km2: number;
   threshold_area_km2: number;
   backend: string;
+  device?: string;
   span_km: number;
   tiles: number;
   corners: number[][];
@@ -217,7 +218,8 @@ export function VigiaDesk({ watches }: { watches: Watch[] }) {
             <p className="font-heading text-2xl tracking-tight">{result.area_km2.toFixed(2)} km²</p>
             <p className="text-sm text-muted-foreground">
               Agua según el U-Net, dentro de {result.span_km.toFixed(1)} km de lado. El umbral VH
-              del lugar marca {result.threshold_area_km2.toFixed(2)} km². Backend: {result.backend}.
+              del lugar marca {result.threshold_area_km2.toFixed(2)} km². Backend: {result.backend}
+              {result.device ? ` (${result.device})` : ""}.
             </p>
             <p className="text-xs leading-relaxed text-muted-foreground">
               En el falso color, el rojo es VV, el verde es VH y el azul el cociente. El agua lisa

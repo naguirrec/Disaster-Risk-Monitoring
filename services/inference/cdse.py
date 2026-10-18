@@ -541,6 +541,7 @@ def segment_scene(
         "span_km": round(span * 10 / 1000, 2),
         "corners": _chip_corners(vh_path, col0, row0, span),
         "backend": segmenter.backend,
+        "device": segmenter.device,
         "preview_png": _preview(vh_db, water, vv_db),
         "sar_png": _sar_png(vv_db, vh_db),
         "mask_png": _mask_png(water),

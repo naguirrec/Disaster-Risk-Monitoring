@@ -64,7 +64,7 @@ El falso color no es una foto. El verde domina porque VH ocupa el canal verde. E
 
 El servicio se llama `flood_segmentation_model`, igual que en el curso, y habla el contrato HTTP de Triton: entra `float32` `[1, 2, 512, 512]` (VV y VH en dB) y sale `float32` `[1, 1, 512, 512]`, la probabilidad de agua. Lo implementa un proceso FastAPI. No hay un motor TensorRT ni un servidor Triton cargado.
 
-La red es una U-Net pequeña, sin el ResNet-18 del curso. Los pesos que responde son los entrenados con 22 chips (`services/inference/weights/flood_unet.pt`). En 11 chips apartados, el IoU macro es **0,61**. Un reentrenamiento con 122 chips estratificados, 8 épocas y recortes de 256, llegó a **0,59** y no lo mejora. Los dos superan el umbral VH (**0,55**). Esos números están en `services/inference/model_card.json`. El modelo aprendió con inundaciones de 2016–2019. Aplicarlo a 2024 es una transferencia: la cifra de Paiporta es una estimación, no una validación contra un mapa oficial de la DANA.
+La red es una U-Net pequeña, sin el ResNet-18 del curso. Los pesos que responde son los entrenados con 22 chips (`services/inference/weights/flood_unet.pt`). En 11 chips apartados, el IoU macro es **0,61**. Un reentrenamiento con 122 chips, 8 épocas y recortes de 256 llegó a **0,59**. Otro, en la GPU, con 354 chips a 512, pérdida BCE+Dice y las crecidas de España y Ghana enteras apartadas, sube esas crecidas (España de 0,35 a 0,49, Ghana de 0,37 a 0,58) pero en los 11 chips baja a **0,57**, así que tampoco sustituye al de 22 chips. Los dos superan el umbral VH en esos 11 chips (**0,55**). Las cifras están en `services/inference/model_card.json`. El modelo aprendió con inundaciones de 2016–2019. Aplicarlo a 2024 es una transferencia: la cifra de Paiporta es una estimación, no una validación contra un mapa oficial de la DANA.
 
 La normalización que ve la red es fija: VV de −25 a 0 dB y VH de −35 a −5 dB. El umbral VH del evento solo lo usa el backend de reserva, el que clasifica por umbral si no hay pesos.
 
@@ -73,7 +73,7 @@ La normalización que ve la red es fija: VV de −25 a 0 dB y VH de −35 a −5
 | Paso del curso | En el laboratorio | Aquí |
 | --- | --- | --- |
 | Preproceso | NVIDIA DALI en GPU | Calibración a dB y la normalización de arriba, en CPU. El perfil `nvidia` deja el pipeline DALI en `deploy/dali/preprocess.py`. |
-| Entrenamiento | TAO Toolkit, `unet`, ResNet-18, salida `.etlt` | U-Net pequeño en PyTorch, en CPU. Plantilla TAO en `deploy/tao/unet_resnet18.yaml`. |
+| Entrenamiento | TAO Toolkit, `unet`, ResNet-18, salida `.etlt` | U-Net pequeño en PyTorch. Usa la GPU NVIDIA si `torch.cuda` la ve, y si no la CPU. Plantilla TAO en `deploy/tao/unet_resnet18.yaml`. |
 | Despliegue | TensorRT, `model.plan`, Triton | El mismo nombre de modelo y el mismo contrato HTTP. No hay `model.plan`. |
 
 Los notebooks del laboratorio no están en el repositorio y no se redistribuyen. El perfil Docker `nvidia` documenta el camino DALI → TAO → TensorRT → Triton para cuando haya GPU NVIDIA, sesión en NGC y un `model.plan` compilado en esa misma GPU.

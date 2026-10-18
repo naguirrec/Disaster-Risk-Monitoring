@@ -29,6 +29,7 @@ type Scene = {
 type SegmentResult = {
   area_km2: number;
   backend: string;
+  device?: string;
   preview_png: string;
   product_id: string;
   water_pixels: number;
@@ -218,7 +219,8 @@ export function CopernicusPanel({ events }: { events: CopernicusEvent[] }) {
             />
             <p className="text-sm">
               Agua estimada: <span className="font-medium">{result.area_km2.toFixed(2)} km²</span> en
-              el chip de 512×512. Backend: {result.backend}.
+              el chip de 512×512. Backend: {result.backend}
+              {result.device ? ` (${result.device})` : ""}.
             </p>
           </CardContent>
         </Card>

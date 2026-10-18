@@ -31,6 +31,7 @@ def model_metadata() -> dict[str, Any]:
         "versions": ["1"],
         "platform": platform,
         "backend": segmenter.backend,
+        "device": segmenter.device,
         "inputs": [
             {"name": "input", "datatype": "FP32", "shape": [2, 512, 512]},
             {
@@ -105,6 +106,7 @@ async def infer(request: Request) -> Response:
         "model_version": "1",
         "parameters": {
             "backend": segmenter.backend,
+            "device": segmenter.device,
             "vh_threshold": vh_threshold if vh_threshold is not None else DEFAULT_VH_THRESHOLD,
             "ran_triton": False,
         },

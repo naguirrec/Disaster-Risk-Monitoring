@@ -32,6 +32,13 @@ NORM_VH = (-35.0, -5.0)
 DEFAULT_VH_THRESHOLD = -21.69
 
 
+def torch_device() -> str:
+    """cuda cuando este proceso ve una GPU NVIDIA; si no, cpu."""
+    if torch is not None and torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
+
+
 def dequantize(values: np.ndarray, lo: float, hi: float) -> np.ndarray:
     return values.astype(np.float32) / 255.0 * (hi - lo) + lo
 
@@ -121,7 +128,7 @@ class Segmenter:
             "notes": "model_card.json todavía no existe; se usa el umbral VH.",
         }
         self.model = None
-        self.device = "cpu"
+        self.device = torch_device()
         if CARD_PATH.exists():
             self.card = json.loads(CARD_PATH.read_text())
         backend = self.card.get("backend", "vh_threshold")
@@ -130,8 +137,8 @@ class Segmenter:
                 raise RuntimeError("El model card pide el U-Net, pero PyTorch no está instalado.")
             if not WEIGHTS_PATH.exists():
                 raise RuntimeError(f"Faltan los pesos {WEIGHTS_PATH}.")
-            self.model = FloodUNet()
-            state = torch.load(WEIGHTS_PATH, map_location="cpu", weights_only=True)
+            self.model = FloodUNet().to(self.device)
+            state = torch.load(WEIGHTS_PATH, map_location=self.device, weights_only=True)
             self.model.load_state_dict(state)
             self.model.eval()
 
@@ -145,10 +152,10 @@ class Segmenter:
             raise ValueError("La entrada debe tener forma [N, 2, H, W].")
         if self.backend == "pytorch_unet" and self.model is not None and torch is not None:
             normalized = normalize_db(image_db)
-            tensor = torch.from_numpy(normalized)
+            tensor = torch.from_numpy(normalized).to(self.device)
             with torch.no_grad():
                 logits = self.model(tensor)
                 prob = torch.sigmoid(logits)
-            return prob.cpu().numpy().astype(np.float32)
+            return prob.detach().cpu().numpy().astype(np.float32)
         thresh = DEFAULT_VH_THRESHOLD if vh_threshold is None else float(vh_threshold)
         return threshold_probability(image_db, thresh)
