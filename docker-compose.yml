@@ -6,8 +6,16 @@
 services:
   inference:
     build: ./services/inference
+    # Solo en el propio equipo: el servicio no tiene autenticación y descarga
+    # escenas con la cuenta de Copernicus.
     ports:
-      - "43124:43124"
+      - "127.0.0.1:43124:43124"
+    environment:
+      # docker compose lee estos valores de `.env` (no de `.env.local`).
+      CDSE_USERNAME: ${CDSE_USERNAME:-}
+      CDSE_PASSWORD: ${CDSE_PASSWORD:-}
+    volumes:
+      - copernicus-scenes:/app/data/copernicus
     profiles: ["cpu"]
 
   web:
@@ -83,3 +91,4 @@ services:
 
 volumes:
   tao-results:
+  copernicus-scenes:

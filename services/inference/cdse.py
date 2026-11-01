@@ -17,6 +17,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+import threading
 import xml.etree.ElementTree as ET
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -24,7 +25,12 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+_HERE = Path(__file__).resolve()
+# En el repo cdse.py vive en services/inference; en la imagen Docker va en /app y
+# DRM_ROOT apunta ahí.
+ROOT = Path(os.environ["DRM_ROOT"]) if os.environ.get("DRM_ROOT") else (
+    _HERE.parents[2] if len(_HERE.parents) > 2 else _HERE.parent
+)
 CACHE = ROOT / "data" / "copernicus"
 TOKEN_URL = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
 CATALOGUE_URL = "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
@@ -242,9 +248,22 @@ def _member(names: list[str], polarization: str, kind: str) -> str:
     return matches[0]
 
 
+_LOCKS: dict[str, threading.Lock] = {}
+_LOCKS_GUARD = threading.Lock()
+
+
 def _download(product_id: str) -> Path:
     if not PRODUCT_ID.match(product_id):
         raise CdseError("El identificador de escena no es un UUID.")
+    # Dos peticiones a la misma escena no pueden escribir a la vez en scene.zip:
+    # la segunda espera y encuentra ready.json.
+    with _LOCKS_GUARD:
+        lock = _LOCKS.setdefault(product_id.lower(), threading.Lock())
+    with lock:
+        return _download_locked(product_id)
+
+
+def _download_locked(product_id: str) -> Path:
     target = CACHE / product_id
     marker = target / "ready.json"
     if marker.is_file():
@@ -266,26 +285,35 @@ def _download(product_id: str) -> Path:
     except urllib.error.URLError as exc:
         archive.unlink(missing_ok=True)
         raise CdseError("No se pudo descargar la escena desde zipper.dataspace.copernicus.eu.") from exc
+    except OSError as exc:
+        # Cortes a mitad de descarga (timeout, disco lleno): no dejar un zip a medias.
+        archive.unlink(missing_ok=True)
+        raise CdseError("La descarga de la escena se interrumpió.") from exc
     if archive.stat().st_size < 1024:
         archive.unlink(missing_ok=True)
         raise CdseError("La descarga llegó vacía.")
-    with zipfile.ZipFile(archive) as bundle:
-        names = bundle.namelist()
-        wanted = [
-            _member(names, "vv", "measurement"),
-            _member(names, "vh", "measurement"),
-            _member(names, "vv", "annotation/calibration/calibration-"),
-            _member(names, "vh", "annotation/calibration/calibration-"),
-        ]
-        for name in wanted:
-            destination = target / Path(name).name
-            with bundle.open(name) as source, destination.open("wb") as handle:
-                while True:
-                    chunk = source.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    handle.write(chunk)
-    archive.unlink(missing_ok=True)
+    # El zip pesa ~1,7 GB: se borra también si la extracción falla.
+    try:
+        with zipfile.ZipFile(archive) as bundle:
+            names = bundle.namelist()
+            wanted = [
+                _member(names, "vv", "measurement"),
+                _member(names, "vh", "measurement"),
+                _member(names, "vv", "annotation/calibration/calibration-"),
+                _member(names, "vh", "annotation/calibration/calibration-"),
+            ]
+            for name in wanted:
+                destination = target / Path(name).name
+                with bundle.open(name) as source, destination.open("wb") as handle:
+                    while True:
+                        chunk = source.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        handle.write(chunk)
+    except zipfile.BadZipFile as exc:
+        raise CdseError("La descarga de la escena llegó incompleta.") from exc
+    finally:
+        archive.unlink(missing_ok=True)
     marker.write_text(json.dumps({"id": product_id}), encoding="utf-8")
     return target
 
@@ -407,7 +435,15 @@ def _chip_corners(path: Path, col0: int, row0: int, size: int) -> list[list[floa
         return [[lon, lat] for lon, lat in (_lonlat_from_pixel(gcps, col, row) for col, row in corners)]
 
 
-def _read_window(path: Path, lon: float, lat: float, size: int = CHIP) -> tuple[np.ndarray, np.ndarray]:
+def _read_window(
+    path: Path,
+    lon: float,
+    lat: float,
+    size: int = CHIP,
+    origin: tuple[int, int] | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Lee `size`×`size` px. Con `origin` (fila, columna) usa esa misma ventana,
+    para que VV y VH queden alineados píxel a píxel."""
     try:
         import rasterio
         from rasterio.transform import rowcol
@@ -417,16 +453,21 @@ def _read_window(path: Path, lon: float, lat: float, size: int = CHIP) -> tuple[
     with rasterio.open(path) as src:
         if src.height < size or src.width < size:
             raise CdseError("La medición es más pequeña que el recorte pedido.")
-        gcps, _crs = src.gcps
-        if gcps:
-            row, col = _pixel_from_gcps(gcps, lon, lat, src.height, src.width)
+        if origin is not None:
+            row0, col0 = origin
+            if not (0 <= row0 <= src.height - size and 0 <= col0 <= src.width - size):
+                raise CdseError("La ventana pedida queda fuera de esta medición.")
         else:
-            row, col = rowcol(src.transform, lon, lat)
-            row, col = int(row), int(col)
-            if not (0 <= row < src.height and 0 <= col < src.width):
-                raise CdseError("El centro de la huella cae fuera de esta escena.")
-        row0 = int(np.clip(row - size // 2, 0, src.height - size))
-        col0 = int(np.clip(col - size // 2, 0, src.width - size))
+            gcps, _crs = src.gcps
+            if gcps:
+                row, col = _pixel_from_gcps(gcps, lon, lat, src.height, src.width)
+            else:
+                row, col = rowcol(src.transform, lon, lat)
+                row, col = int(row), int(col)
+                if not (0 <= row < src.height and 0 <= col < src.width):
+                    raise CdseError("El centro de la huella cae fuera de esta escena.")
+            row0 = int(np.clip(row - size // 2, 0, src.height - size))
+            col0 = int(np.clip(col - size // 2, 0, src.width - size))
         data = src.read(1, window=Window(col0, row0, size, size)).astype(np.float32)
     return data, np.array([row0, col0], dtype=np.int32)
 
@@ -500,14 +541,14 @@ def segment_scene(
     vh_cal = next(path for path in folder.glob("calibration-*-vh-*.xml"))
     try:
         vv_dn, origin = _read_window(vv_path, lon, lat, span)
-        vh_dn, _origin = _read_window(vh_path, lon, lat, span)
+        vh_dn, _ = _read_window(vh_path, lon, lat, span, (int(origin[0]), int(origin[1])))
     except CdseError:
         if tiles == 1:
             raise
         tiles = 1
         span = CHIP
         vv_dn, origin = _read_window(vv_path, lon, lat, span)
-        vh_dn, _origin = _read_window(vh_path, lon, lat, span)
+        vh_dn, _ = _read_window(vh_path, lon, lat, span, (int(origin[0]), int(origin[1])))
     row0, col0 = int(origin[0]), int(origin[1])
     vv_db = _to_db(vv_dn, _calibration_grid(vv_cal, row0, col0, span, span))
     vh_db = _to_db(vh_dn, _calibration_grid(vh_cal, row0, col0, span, span))

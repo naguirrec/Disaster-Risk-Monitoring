@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type GeoJSONSource,
   LngLatBounds,
   Map,
   NavigationControl,
@@ -66,9 +67,13 @@ export function VigiaMap({
   const overlayRef = useRef(overlay);
   const radarOpacityRef = useRef(radarOpacity);
   const maskOpacityRef = useRef(maskOpacity);
-  overlayRef.current = overlay;
-  radarOpacityRef.current = radarOpacity;
-  maskOpacityRef.current = maskOpacity;
+
+  // Declared before the map effect so the refs are current when it paints.
+  useEffect(() => {
+    overlayRef.current = overlay;
+    radarOpacityRef.current = radarOpacity;
+    maskOpacityRef.current = maskOpacity;
+  }, [overlay, radarOpacity, maskOpacity]);
 
   useEffect(() => {
     const node = container.current;
@@ -94,7 +99,7 @@ export function VigiaMap({
       };
       const watch = map.getSource("watch");
       if (watch?.type === "geojson") {
-        watch.setData({ type: "FeatureCollection", features: [point] });
+        (watch as GeoJSONSource).setData({ type: "FeatureCollection", features: [point] });
       } else if (!watch) {
         map.addSource("watch", { type: "geojson", data: { type: "FeatureCollection", features: [point] } });
         map.addLayer({

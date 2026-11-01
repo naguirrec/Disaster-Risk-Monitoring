@@ -6,3 +6,7 @@ data/raw
 services/inference/__pycache__
 **/__pycache__
 *.pyc
+data/copernicus
+.env*
+!.env.example
+.venv
